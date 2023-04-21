@@ -112,6 +112,9 @@ class PromptedBert(nn.Module):
         return logits
 
 
+# 下载bert-base-ch
+# snapshot_download(repo_id="bert-base-chinese", cache_dir="D:\Pycharm\myCodes\EntityLinking",
+#                   ignore_patterns=["*.h5", "*.ot", "*.msgpack"])
 bert_path = "bert-base-chinese"
 
 tokenizer = BertTokenizer.from_pretrained(bert_path)
@@ -120,12 +123,6 @@ promptedBert = PromptedBert(prompt_config, bert_path, num_classes=10000)
 
 inputs1 = tokenizer("今天天气真好，适合机器学习", return_tensors="pt")
 inputs2 = tokenizer("我真爱机器学习", return_tensors="pt")
-# print(inputs1)
-# print(inputs2)
-# embedding1 = promptedBert.incorporate_prompt(inputs1['input_ids'])
-# embedding2 = promptedBert.incorporate_prompt(inputs2['input_ids'])
-# print(embedding1)
-# print(embedding2)
 encoded1 = promptedBert(inputs1)
 print(encoded1[0])
 print(encoded1[0].shape)
