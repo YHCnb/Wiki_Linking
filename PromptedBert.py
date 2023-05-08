@@ -5,6 +5,8 @@ from torch.nn import Dropout
 from transformers import BertModel, BertConfig, BertTokenizer
 from configs.prompt_config import Prompt_config
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class PromptedBert(nn.Module):
     def __init__(self, prompt_config, bert_path, out_dim):
@@ -40,6 +42,7 @@ class PromptedBert(nn.Module):
             self.deep_prompt_embeddings = nn.Parameter(torch.zeros(
                 num_layers, num_tokens, prompt_dim))
             nn.init.uniform_(self.deep_prompt_embeddings.data, -val, val)
+        self.train()
 
     def incorporate_prompt(self, input_ids, segment_idx):
         # 将input_embeddings和prompt_embeddings组合，prompt_embeddings放在[CLS]后面
@@ -56,8 +59,10 @@ class PromptedBert(nn.Module):
         # 设置模型状态
         if mode:
             # training:保持bert主体参数不变
-            self.encoder.eval()
-            self.embeddings.eval()
+            # self.encoder.eval()
+            # self.embeddings.eval()
+            self.encoder.train()
+            self.embeddings.train()
             self.head.train()
             self.prompt_dropout.train()
             self.prompt_proj.train()
@@ -72,11 +77,6 @@ class PromptedBert(nn.Module):
         hidden_states = None
         batch_size = embedding_output.shape[0]
         num_layers = self.bert_config.num_hidden_layers
-
-        # 在[CLS]后插入num_tokens个0
-        new_mask = torch.zeros(mask_idx.shape[0], self.num_tokens)
-        mask_idx = torch.cat([mask_idx[:, :1], new_mask, mask_idx[:, 1:]],
-                             dim=-1)
 
         for i in range(num_layers):
             if i == 0:
@@ -98,15 +98,22 @@ class PromptedBert(nn.Module):
         return encoded
 
     def forward(self, token_idx, segment_idx, mask_idx):
+        token_idx = token_idx.to(device)
+        segment_idx = segment_idx.to(device)
+        mask_idx = mask_idx.to(device)
+        # 在[CLS]后插入num_tokens个0
+        new_mask = torch.ones(mask_idx.shape[0], self.num_tokens).to(device)
+        mask_idx = torch.cat([mask_idx[:, :1], new_mask, mask_idx[:, 1:]], dim=-1)
+        mask_idx = mask_idx.unsqueeze(1).unsqueeze(1)  # (batchsize,1,1,64),embedding_output的维度为(batchsize,64,768)
+
         embedding_output = self.incorporate_prompt(token_idx, segment_idx)
         # 是否采用DEEP策略获取输出
         if self.prompt_config.DEEP:
-            encoded = self.forward_deep_prompt(
-                embedding_output, mask_idx)
+            encoded = self.forward_deep_prompt(embedding_output, mask_idx)
         else:
-            encoded = self.encoder(embedding_output, attention_mask=mask_idx)
+            encoded = self.encoder(embedding_output, attention_mask=mask_idx)[0]
         # 选择第一个结点的输出，通过线性头得到结果（由于目标是提取特征，则不进行归一化）
-        encoded = encoded[:, 0]
+        encoded = encoded[:, 0, :]
         logits = self.head(encoded)
         return logits
 
@@ -120,9 +127,12 @@ if __name__ == "__main__":
     tokenizer = BertTokenizer.from_pretrained(bert_path)
     prompt_config = Prompt_config()
     promptedBert = PromptedBert(prompt_config, bert_path, out_dim=10000)
+    promptedBert = promptedBert.cuda()
 
-    inputs1 = tokenizer("今天天气真好，适合机器学习", return_tensors="pt")
+    inputs1 = tokenizer(["今天天气真好，适合机器学习", "我真爱机器学习"], padding=True, truncation=True, return_tensors="pt")
     inputs2 = tokenizer("我真爱机器学习", return_tensors="pt")
+    print(inputs1['input_ids'])
+    print(inputs2['input_ids'])
     encoded1 = promptedBert(inputs1['input_ids'], inputs1['token_type_ids'], inputs1['attention_mask'])
     print(encoded1[0])
     print(encoded1[0].shape)
