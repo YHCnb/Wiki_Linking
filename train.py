@@ -35,10 +35,6 @@ def to_bert_input(token_idx, null_idx):
 
 def encode_context(context):
     token_idx_context, segment_idx_context, mask_context = to_bert_input(context, 0)
-    token_idx_context = token_idx_context.to(device)
-    segment_idx_context = segment_idx_context.to(device)
-    mask_context = mask_context.to(device)
-
     embedding_context, _ = biEncoder(
         token_idx_context, segment_idx_context, mask_context, None, None, None
     )
@@ -121,9 +117,6 @@ def train(num_epochs, learning_rate, batch_size, dict):
         # step为从start参数开始枚举的数（从0开始） batch为train_iter参数中的值
         for step, batch in enumerate(train_iter):
             context_vectors, entity_vectors, gold_id = batch
-            # context_vectors = context_vectors.to(device)
-            # entity_vectors = entity_vectors.to(device)
-
             optimizer.zero_grad()
             scores = score_candidate(context_vectors, entity_vectors)
             loss = loss_function(scores)
@@ -157,7 +150,7 @@ def train(num_epochs, learning_rate, batch_size, dict):
 
 
 if __name__ == "__main__":
-    num_epochs = 20
+    num_epochs = 10
     learning_rate = 0.001
     batch_size = 128
     train(num_epochs, learning_rate, batch_size, dict)

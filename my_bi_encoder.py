@@ -1,16 +1,15 @@
 import torch
 from transformers import BertTokenizer, BertModel
-
 from PromptedBert import PromptedBert
 from configs.bi_encoder_config import Bi_encoder_config
 from configs.prompt_config import Prompt_config
-from my_BertEncoder import BertEncoder
 
 
 class BiEncoderModule(torch.nn.Module):
     def __init__(self, config):
         super(BiEncoderModule, self).__init__()
         prompt_config = Prompt_config()
+        # 将两个PromptedBert分别作为context和cand的编码器
         self.context_encoder = PromptedBert(
             prompt_config,
             config['bert_path'],
@@ -21,20 +20,7 @@ class BiEncoderModule(torch.nn.Module):
             config['bert_path'],
             out_dim=config['out_dim']
         )
-        # ctxt_bert = BertModel.from_pretrained(config["bert_path"])
-        # cand_bert = BertModel.from_pretrained(config['bert_path'])
-        # self.context_encoder = BertEncoder(
-        #     ctxt_bert,
-        #     config["out_dim"],
-        #     add_linear=True,
-        # )
-        # self.cand_encoder = BertEncoder(
-        #     cand_bert,
-        #     config["out_dim"],
-        #     add_linear=True,
-        # )
         self.config = prompt_config  # 保存prompt_config
-        # self.config = ctxt_bert.config
 
     def train(self, mode=True):
         # 设置模型状态

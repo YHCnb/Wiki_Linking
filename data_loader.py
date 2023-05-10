@@ -99,9 +99,9 @@ def context_preprocess(datapath, dict):
                 flag = 1
 
             count += 1
+            if count == 100000: break
             if count % 10000 == 0:
                 print(count / 10000)
-                if count == 10000: break
 
     processed_context = torch.Tensor(processed_context)
     print(processed_context.shape)
