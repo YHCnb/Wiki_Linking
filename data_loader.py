@@ -30,7 +30,7 @@ def get_entity_vecs(title, text):
 def wiki_preprocess():
     dict = {}
     if not os.path.exists('dict.pickle'):
-        with open('zhwiki/zh-wiki_final.jsonl', encoding='utf-8') as (f):
+        with open('data/zh-wiki_final.jsonl', encoding='utf-8') as (f):
             flag = 0
             for sample in tqdm(f):
                 x = json.loads(sample)
